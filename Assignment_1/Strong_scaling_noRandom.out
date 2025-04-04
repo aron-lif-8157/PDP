@@ -1,0 +1,43 @@
+strong scaling experiment: total workload = 2^26 iterations
+-------------------------------------
+Running strong scaling and with 1 process(es):
+Parallel Summation done
+0.285494
+
+-------------------------------------
+Running strong scaling and with 2 process(es):
+Parallel Summation done
+0.279393
+Parallel Summation done
+0.281611
+
+-------------------------------------
+Running strong scaling and with 4 process(es):
+Parallel Summation done
+0.274776
+Parallel Summation done
+0.274779
+Parallel Summation done
+0.274818
+Parallel Summation done
+0.274803
+
+-------------------------------------
+Running strong scaling and with 8 process(es):
+Parallel Summation done
+0.274813
+Parallel Summation done
+0.274737
+Parallel Summation done
+0.274764
+Parallel Summation done
+0.267473
+Parallel Summation done
+0.272652
+Parallel Summation done
+0.272681
+Parallel Summation done
+0.274755
+Parallel Summation done
+0.272646
+
