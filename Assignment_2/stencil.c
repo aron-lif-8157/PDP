@@ -1,258 +1,171 @@
-#include "stencil.h"
-#include <mpi.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+#include "stencil.h"
 
-int main(int argc, char **argv)
-{
-    // Initialize MPI
-    MPI_Init(&argc, &argv);
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+#define STENCIL_WIDTH 5
+#define EXTENT (STENCIL_WIDTH/2)
 
-    // Check arguments on rank 0
-    if (argc != 4) {
-        if (rank == 0) {
-            printf("Usage: stencil input_file output_file number_of_applications\n");
-        }
-        MPI_Finalize();
-        return 1;
-    }
+int main(int argc, char **argv) {
+	MPI_Init(&argc, &argv);
+	int rank, size;
+	MPI_Comm comm = MPI_COMM_WORLD;
+	MPI_Comm_rank(comm, &rank);
+	MPI_Comm_size(comm, &size);
 
+	if (argc != 4) {
+		if (rank == 0) {
+			fprintf(stderr, "Usage: stencil input_file output_file number_of_applications\n");
+		}
+		MPI_Finalize();
+		return 1;
+	}
+	char *input_name = argv[1];
+	char *output_name = argv[2];
+	int num_steps = atoi(argv[3]);
 
-    char *input_name  = argv[1];
-    char *output_name = argv[2];
-    int stencil_count = atoi(argv[3]);
-    int num_values;
-    double *input = NULL;
+	int num_values = 0;
+	double *input = NULL;
 
-    // Only rank 0 reads full data
-    if (rank == 0) {
-        // PROBLEM: shadowing removed so input gets set correctly
-        if ((num_values = read_input(input_name, &input)) < 0) {
-            perror("Error reading input file");
-            MPI_Abort(MPI_COMM_WORLD, 2);
-        }
-        if (num_values % size != 0) {
-            printf("Number of values is not divisible by number of processes\n");
-            printf("Number of values needs to be divisible by number of processes as per the assignment intructions\n");
-            printf("Number of values: %d, number of processes: %d\n", num_values, size);
-            printf("please change process count\n");
-            MPI_Abort(MPI_COMM_WORLD, 2);
-        }
-    }
+	if (rank == 0) {
+		num_values = read_input(input_name, &input);
+		if (num_values < 0) {
+			MPI_Abort(comm, 2);
+		}
+	}
+	MPI_Bcast(&num_values, 1, MPI_INT, 0, comm);
 
-    MPI_Bcast(&num_values, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    int num_steps = num_values / size;
+	int q = num_values / size;
+	int rem = num_values % size;
+	int *sendcounts = malloc(size * sizeof(int));
+	int *displs     = malloc(size * sizeof(int));
+	for (int i = 0; i < size; i++) {
+		sendcounts[i] = q + (i < rem ? 1 : 0);
+		displs[i]     = (i == 0 ? 0 : displs[i-1] + sendcounts[i-1]);
+	}
+	int local_n = sendcounts[rank];
 
-    //! Stencil values
-    double h = 2.0 * PI / num_values;
-    const int STENCIL_WIDTH = 5;
-    const int EXTENT = STENCIL_WIDTH / 2;
-    const double STENCIL[] = {1.0 / (12 * h), -8.0 / (12 * h), 0.0, 8.0 / (12 * h), -1.0 / (12 * h)};
+	double *local_data = malloc(local_n * sizeof(double));
+	MPI_Scatterv(input, sendcounts, displs, MPI_DOUBLE,
+				 local_data, local_n, MPI_DOUBLE,
+				 0, comm);
+	if (rank == 0) free(input);
 
-    /*  We broadcast number of steps to all the recivers
-        TODO: there might be a problem since num_values isn't heap allocated
-     *   Broadcasting and receving in one function call
-     *   &num_values, address of value to be send and address where to store recived value
-     *   1, number of values to be send
-     *   MPI_INT, type of value to be send
-     *   0, rank of process that sends the value
-     *   MPI_COMM_WORLD, communicator to be used
-     */
+	double h = 2.0 * PI / num_values;
+	double stencil[STENCIL_WIDTH] = {
+		1.0/(12.0*h),
+		-8.0/(12.0*h),
+		0.0,
+		8.0/(12.0*h),
+		-1.0/(12.0*h)
+	};
 
+	int buf_size = local_n + 2 * EXTENT;
+	double *old = malloc(buf_size * sizeof(double));
+	double *new = malloc(buf_size * sizeof(double));
+	for (int i = 0; i < EXTENT; i++)      old[i]                 = 0.0;
+	for (int i = 0; i < local_n;  i++)      old[EXTENT + i]       = local_data[i];
+	for (int i = 0; i < EXTENT; i++)      old[EXTENT+local_n + i] = 0.0;
+	free(local_data);
 
-    // TODO : num_steps kanske borde vara heap allokerad
+	int left  = (rank - 1 + size) % size;
+	int right = (rank + 1)       % size;
 
-    // Allocate data for result including halo values
-    double *local_recived = malloc((num_steps + 2 * EXTENT) * sizeof(double));
-    double *local_result = malloc((num_steps) * sizeof(double));
+	MPI_Barrier(comm);
+	double start = MPI_Wtime();
+	for (int step = 0; step < num_steps; step++) {
+		// Halo exchange
+		MPI_Sendrecv(&old[EXTENT], EXTENT, MPI_DOUBLE, left,  0,
+					 &old[EXTENT + local_n], EXTENT, MPI_DOUBLE, right, 0,
+					 comm, MPI_STATUS_IGNORE);
+		MPI_Sendrecv(&old[EXTENT + local_n - EXTENT], EXTENT, MPI_DOUBLE, right, 1,
+					 &old[0],                 EXTENT, MPI_DOUBLE, left,  1,
+					 comm, MPI_STATUS_IGNORE);
+		// Compute stencil
+		for (int i = EXTENT; i < EXTENT + local_n; i++) {
+			double sum = 0.0;
+			for (int j = 0; j < STENCIL_WIDTH; j++) {
+				sum += stencil[j] * old[i - EXTENT + j];
+			}
+			new[i] = sum;
+		}
+		double *tmp = old; old = new; new = tmp;
+	}
+	MPI_Barrier(comm);
 
-    /*  MPI Scatter Scatter the input data to all processes
-     ?   input, pointer to the data to be scattered
-     ?   num_steps, number of values to be scattered
-     ?   MPI_DOUBLE, type of data to be scattered
-     ?   local_recived, pointer to where the data should be recived
-     ?   num_steps, number of values to be recived
-     ?   MPI_DOUBLE, type of data to be recived
-     ?   0, rank of process that sends the data
-     ?   MPI_COMM_WORLD, communicator to be used
-     */
+	double local_time;
+	local_time = MPI_Wtime() - start;
+	double max_time;
+	MPI_Reduce(&local_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	if (rank == 0) {
+		printf("%f\n", max_time);
+	}
 
-    // TODO: Varför scatterar vi num_steps när vi redan har räknat ut det i varje process
-    MPI_Scatter(input, // maybe should be pointer
-                num_steps,
-                MPI_DOUBLE,
-                &local_recived[EXTENT],
-                num_steps,
-                MPI_DOUBLE,
-                0,
-                MPI_COMM_WORLD);
+	double *final_output = NULL;
+	if (rank == 0) final_output = malloc(num_values * sizeof(double));
+	MPI_Gatherv(&old[EXTENT], local_n, MPI_DOUBLE,
+				final_output, sendcounts, displs, MPI_DOUBLE,
+				0, comm);
 
-    int left_neighbour = (rank == 0 ? size - 1 : rank - 1);
-    int right_neighbour = (rank == size - 1 ? 0 : rank + 1);
+	if (rank == 0) {
+		if (0 != write_output(output_name, final_output, num_values)) {
+			MPI_Abort(comm, 2);
+		}
+	}
 
-    //! Apply stencil with same loop logic as seen in stencil.c
-    for (int count = 0; count < stencil_count; count++)
-    {
+	free(old);
+	free(new);
+	free(sendcounts);
+	free(displs);
+	if (rank == 0) free(final_output);
 
-        // Handle halo transfeer between processes.
-
-        //! Send left halo to left process
-        MPI_Sendrecv(&local_recived[EXTENT + num_steps], // address to first element that is to be sent (the right most element)
-                     EXTENT,                            // number of elements to be sent
-                     MPI_DOUBLE,                        // type of data to be sent
-                     left_neighbour,                    // Destination rank for the data
-                     0,                                 // tag for the data needed for the send
-
-                     &local_recived[0], // address to where the data should be recived
-                     EXTENT,           // number of elements to be recived
-                     MPI_DOUBLE,       // type of data to be recived
-                     right_neighbour,  // rank of process that sends the data
-                     0,                // tag for the data needed for the recive
-
-                     MPI_COMM_WORLD,   // communicator to be used
-                     MPI_STATUS_IGNORE // status of the recive
-        );
-
-        //! Send right halo to right process
-        MPI_Sendrecv(&local_recived[EXTENT], // address to first element that is to be sent (the left most element)
-                     EXTENT,                 // number of elements to be sent
-                     MPI_DOUBLE,             // type of data to be sent
-                     right_neighbour,        // Destination rank for the data
-                     0,                      // tag for the data needed for the send
-
-                     &local_recived[num_steps + EXTENT], // address to where the data should be recived
-                     EXTENT,                             // number of elements to be recived
-                     MPI_DOUBLE,                         // type of data to be recived
-                     left_neighbour,                     // rank of process that sends the data
-                     0,                                  // tag for the data needed for the recive
-
-                     MPI_COMM_WORLD,   // communicator to be used
-                     MPI_STATUS_IGNORE // status of the recive
-        );
-
-        //! applying to each element
-        for (int s = 0; s < num_steps; s++)
-        {
-
-            for (int i = EXTENT; i < num_steps + EXTENT; i++)
-            {
-                double result = 0;
-                for (int j = 0; j < STENCIL_WIDTH; j++)
-                {
-                    int index = (i - EXTENT + j) % num_values;
-                    result += STENCIL[j] * local_recived[index];
-                }
-                local_result[i - EXTENT] = result;
-            }
-        }
-        //! update the local_recived with the result
-        for (int i = 0; i < num_steps; i++)
-        {
-            local_recived[i + EXTENT] = local_result[i];
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-    double *output = NULL;
-    if (NULL == (output = malloc(num_values * sizeof(double))))
-    {
-        perror("Couldn't allocate memory for output");
-        return 2;
-    }
-    //! gather result
-    MPI_Gather(&local_result[0], // address to first element that is to be sent (the left most element)
-               num_steps,       // number of elements to be sent
-               MPI_DOUBLE,      // type of data to be sent
-               output,          // address to where the data should be recived
-               num_steps,       // number of elements to be recived
-               MPI_DOUBLE,      // type of data to be recived
-               0,               // rank of process that sends the data
-               MPI_COMM_WORLD   // communicator to be used
-    );
-
-#ifdef PRODUCE_OUTPUT_FILE
-    if (rank == 0)
-    {
-
-        if (0 != write_output(output_name, output, num_values))
-        {
-            return 2;
-        }
-    }
-#endif
-MPI_Barrier(MPI_COMM_WORLD);
-    // Free allocated memory
-    free(local_recived);
-    free(local_result);
-    if (rank == 0)
-    {
-        free(input);
-        free(output);
-    }
-
-    // Finalize MPI
-    MPI_Finalize();
-    return 0;
+	MPI_Finalize();
+	return 0;
 }
 
-int read_input(const char *file_name, double **values)
-{
-    FILE *file;
-    if (NULL == (file = fopen(file_name, "r")))
-    {
-        perror("Couldn't open input file");
-        return -1;
-    }
-    int num_values;
-    if (EOF == fscanf(file, "%d", &num_values))
-    {
-        perror("Couldn't read element count from input file");
-        return -1;
-    }
-    if (NULL == (*values = malloc(num_values * sizeof(double))))
-    {
-        perror("Couldn't allocate memory for input");
-        return -1;
-    }
-    for (int i = 0; i < num_values; i++)
-    {
-        if (EOF == fscanf(file, "%lf", &((*values)[i])))
-        {
-            perror("Couldn't read elements from input file");
-            return -1;
-        }
-    }
-    if (0 != fclose(file))
-    {
-        perror("Warning: couldn't close input file");
-    }
-    return num_values;
+int read_input(const char *file_name, double **values) {
+	FILE *file;
+	if (NULL == (file = fopen(file_name, "r"))) {
+		perror("Couldn't open input file");
+		return -1;
+	}
+	int num_values;
+	if (EOF == fscanf(file, "%d", &num_values)) {
+		perror("Couldn't read element count from input file");
+		return -1;
+	}
+	if (NULL == (*values = malloc(num_values * sizeof(double)))) {
+		perror("Couldn't allocate memory for input");
+		return -1;
+	}
+	for (int i = 0; i < num_values; i++) {
+		if (EOF == fscanf(file, "%lf", &((*values)[i]))) {
+			perror("Couldn't read elements from input file");
+			return -1;
+		}
+	}
+	if (0 != fclose(file)) {
+		perror("Warning: couldn't close input file");
+	}
+	return num_values;
 }
 
-int write_output(char *file_name, const double *output, int num_values)
-{
-    FILE *file;
-    if (NULL == (file = fopen(file_name, "w")))
-    {
-        perror("Couldn't open output file");
-        return -1;
-    }
-    for (int i = 0; i < num_values; i++)
-    {
-        if (0 > fprintf(file, "%.4f ", output[i]))
-        {
-            perror("Couldn't write to output file");
-        }
-    }
-    if (0 > fprintf(file, "\n"))
-    {
-        perror("Couldn't write to output file");
-    }
-    if (0 != fclose(file))
-    {
-        perror("Warning: couldn't close output file");
-    }
-    return 0;
+int write_output(char *file_name, const double *output, int num_values) {
+	FILE *file;
+	if (NULL == (file = fopen(file_name, "w"))) {
+		perror("Couldn't open output file");
+		return -1;
+	}
+	for (int i = 0; i < num_values; i++) {
+		if (0 > fprintf(file, "%.4f ", output[i])) {
+			perror("Couldn't write to output file");
+		}
+	}
+	if (0 > fprintf(file, "\n")) {
+		perror("Couldn't write to output file");
+	}
+	if (0 != fclose(file)) {
+		perror("Warning: couldn't close output file");
+	}
+	return 0;
 }

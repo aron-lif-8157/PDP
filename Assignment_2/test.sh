@@ -16,18 +16,18 @@ if [ 1 != "$binary" ]; then
 fi
 echo "build complete"
 
-#echo "Checking result of serial runs"
-#applications=( 1 )
-#for appl in ${applications[@]}; do
-#	./stencil input_files/input96.txt output_files/test_output96.txt $appl > /dev/null
-#	diff --ignore-all-space output_files/test_output96.txt refference_files/output96_${appl}_ref.txt
-#	if [ 0 != $? ] ; then
-#		echo "Wrong result of $appl application(s) on 96 elements!"
-#		exit 1
-#	fi
-#	rm output_files/test_output96.txt
-#done
-#echo "OK"
+echo "Checking result of serial runs"
+applications=( 1 )
+for appl in ${applications[@]}; do
+	./stencil input_files/input96.txt output_files/test_output96.txt $appl > /dev/null
+	diff --ignore-all-space output_files/test_output96.txt refference_files/output96_${appl}_ref.txt
+	if [ 0 != $? ] ; then
+		echo "Wrong result of $appl application(s) on 96 elements!"
+		exit 1
+	fi
+	#rm output_files/test_output96.txt
+done
+echo "OK"
 
 
 echo "Checking result of parallel runs"
@@ -43,9 +43,9 @@ for p in ${pe[@]}; do
 		echo "Wrong results of parallel run ($p processes)!"
 		exit 1
 	fi
-	rm test_output96.txt
+	#rm output_files/test_output96.txt
 done
 echo "OK"
 
 make clean || exit 1
-echo "Your file is ready for submission. Well done!
+#echo "Your file is ready for submission. Well done!
