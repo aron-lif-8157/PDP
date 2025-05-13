@@ -36,19 +36,26 @@ int main(int argc, char **argv) {
 	MPI_Bcast(&num_values, 1, MPI_INT, 0, comm);
 
 	int q = num_values / size;
-	int rem = num_values % size;
+	int remainder = num_values % size;
 	int *sendcounts = malloc(size * sizeof(int));
 	int *displs     = malloc(size * sizeof(int));
 	for (int i = 0; i < size; i++) {
-		sendcounts[i] = q + (i < rem ? 1 : 0);
+		sendcounts[i] = q + (i < remainder ? 1 : 0);
 		displs[i]     = (i == 0 ? 0 : displs[i-1] + sendcounts[i-1]);
 	}
 	int local_n = sendcounts[rank];
 
 	double *local_data = malloc(local_n * sizeof(double));
-	MPI_Scatterv(input, sendcounts, displs, MPI_DOUBLE,
-				 local_data, local_n, MPI_DOUBLE,
-				 0, comm);
+	MPI_Scatterv(input,
+				 sendcounts,
+				 displs,
+				 MPI_DOUBLE,
+				 local_data,
+				 local_n,
+				 MPI_DOUBLE,
+				 0,
+				 comm);
+
 	if (rank == 0) free(input);
 
 	double h = 2.0 * PI / num_values;
@@ -75,12 +82,31 @@ int main(int argc, char **argv) {
 	double start = MPI_Wtime();
 	for (int step = 0; step < num_steps; step++) {
 		// Halo exchange
-		MPI_Sendrecv(&old[EXTENT], EXTENT, MPI_DOUBLE, left,  0,
-					 &old[EXTENT + local_n], EXTENT, MPI_DOUBLE, right, 0,
-					 comm, MPI_STATUS_IGNORE);
-		MPI_Sendrecv(&old[EXTENT + local_n - EXTENT], EXTENT, MPI_DOUBLE, right, 1,
-					 &old[0],                 EXTENT, MPI_DOUBLE, left,  1,
-					 comm, MPI_STATUS_IGNORE);
+		MPI_Sendrecv(&old[EXTENT],
+					 EXTENT,
+					 MPI_DOUBLE,
+					 left,
+					 0,
+					 &old[EXTENT + local_n],
+					 EXTENT,
+					 MPI_DOUBLE,
+					 right,
+					 0,
+					 comm,
+					 MPI_STATUS_IGNORE);
+
+		MPI_Sendrecv(&old[EXTENT + local_n - EXTENT],
+					 EXTENT,
+					 MPI_DOUBLE,
+					 right,
+					 1,
+					 &old[0],
+					 EXTENT,
+					 MPI_DOUBLE,
+					 left,
+					 1,
+					 comm,
+					 MPI_STATUS_IGNORE);
 		// Compute stencil
 		for (int i = EXTENT; i < EXTENT + local_n; i++) {
 			double sum = 0.0;
