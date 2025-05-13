@@ -23,6 +23,7 @@
 #include <algorithm>
 #include "quicksort.h"
 #include "pivot.h"
+#include <mpi.h>
 
 // ‑‑‑‑ Local helpers ---------------------------------------------------------
 static int min_int(int a,int b){ return a<b?a:b; }
@@ -57,7 +58,7 @@ int get_median(int *elements,int n){
 }
 
 // Forward declarations of private helpers
-static int broadcast_pivot(int pivot,MPI_Comm comm);
+static int broadcast_pivot(int &pivot,MPI_Comm comm);
 
 int select_pivot_median_root(int *elements,int n,MPI_Comm comm){
 	int rank; MPI_Comm_rank(comm,&rank);
@@ -112,7 +113,7 @@ int select_pivot(int pivot_strategy,int *elements,int n,MPI_Comm comm){
 	}
 }
 
-static int broadcast_pivot(int pivot,MPI_Comm comm){
+static int broadcast_pivot(int &pivot,MPI_Comm comm){
 	MPI_Bcast(&pivot,1,MPI_INT,ROOT,comm);
 	return pivot;
 }
@@ -158,18 +159,67 @@ int check_and_print(int *elements,int n,char *file_name){
 	return 0;
 }
 
-int distribute_from_root(int *all_elements,int n,int **my_elements){
+/*int distribute_from_root(int *all_elements,int n,int **my_elements){
 	int size,rank; MPI_Comm_size(MPI_COMM_WORLD,&size); MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	// counts and displs
-	std::vector<int> counts(size),displs(size);
-	int base=n/size,rem=n%size;
-	for(int i=0;i<size;++i){ counts[i]=base+(i<rem); }
-	displs[0]=0; for(int i=1;i<size;++i) displs[i]=displs[i-1]+counts[i-1];
+	std::vector<int> 	counts(size)	,displs(size);
+	int 				base=n/size		,rem=n%size;
+
+	for(int i=0;i<size;++i){
+		counts[i]=base+(i<rem);
+	}
+	displs[0]=0;
+	for(int i=1;i<size;++i) {
+		displs[i] = displs[i - 1] + counts[i - 1];
+	}
 
 	*my_elements=(int*)malloc(sizeof(int)*counts[rank]);
-	MPI_Scatterv(all_elements,counts.data(),displs.data(),MPI_INT,
-				 *my_elements,counts[rank],MPI_INT,ROOT,MPI_COMM_WORLD);
+	MPI_Scatterv(
+		all_elements,
+		counts.data(),
+		displs.data(),
+		MPI_INT,
+		*my_elements,
+		counts[rank],
+		MPI_INT,ROOT,
+		MPI_COMM_WORLD);
 	return counts[rank];
+}*/
+
+int distribute_from_root(int *all_elements, int n, int **my_elements)
+{
+	int size, rank;
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	/* ---------- make sure every rank knows n ---------- */
+	MPI_Bcast(&n, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+
+	/* compute counts / displs on every rank */
+	std::vector<int> counts(size), displs(size);
+	int base = n / size, rem = n % size;
+	for (int i = 0; i < size; ++i)
+		counts[i] = base + (i < rem);
+
+	displs[0] = 0;
+	for (int i = 1; i < size; ++i)
+		displs[i] = displs[i-1] + counts[i-1];
+
+	/* ---------- tell each rank exactly how many items it will get ---------- */
+	int local_n;
+	MPI_Scatter(counts.data(), 1, MPI_INT,
+				&local_n,        1, MPI_INT,
+				ROOT, MPI_COMM_WORLD);
+
+	*my_elements = (int*)malloc(sizeof(int) * local_n);
+
+	/* now scatter the real data */
+	MPI_Scatterv(all_elements,
+				 counts.data(), displs.data(), MPI_INT,
+				 *my_elements,  local_n,       MPI_INT,
+				 ROOT, MPI_COMM_WORLD);
+
+	return local_n;
 }
 
 void gather_on_root(int *all_elements,int *my_elements,int local_n){
