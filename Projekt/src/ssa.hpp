@@ -7,10 +7,6 @@
 
 
 
-class ssa {
-
-};
-
 
 
 #endif //SSA_HPP

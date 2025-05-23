@@ -7,10 +7,9 @@
 
 #include <array>
 
-constexpr int X_DIM = 7;    // different possible stages
-constexpr int R = 15;        // different possible outcomes
+constexpr int X_DIM = 7; // different possible stages
+constexpr int R = 15;    // different possible outcomes
 
-extern const
+extern const std::array<std::array<int, X_DIM>, R> P;
 
-
-#endif //STOICHIOMETRY_HPP
+#endif // STOICHIOMETRY_HPP
