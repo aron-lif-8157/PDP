@@ -21,6 +21,8 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <queue>
+#include <functional>
 #include "quicksort.h"
 #include "pivot.h"
 
@@ -57,7 +59,7 @@ int get_median(int *elements,int n){
 }
 
 // Forward declarations of private helpers
-static int broadcast_pivot(int pivot,MPI_Comm comm);
+static int broadcast_pivot(int &pivot,MPI_Comm comm);
 
 int select_pivot_median_root(int *elements,int n,MPI_Comm comm){
 	int rank; MPI_Comm_rank(comm,&rank);
@@ -112,7 +114,7 @@ int select_pivot(int pivot_strategy,int *elements,int n,MPI_Comm comm){
 	}
 }
 
-static int broadcast_pivot(int pivot,MPI_Comm comm){
+static int broadcast_pivot(int &pivot,MPI_Comm comm){
 	MPI_Bcast(&pivot,1,MPI_INT,ROOT,comm);
 	return pivot;
 }
@@ -263,17 +265,20 @@ int main(int argc,char **argv){
 	if(rank==ROOT) printf("%.6f\n",t1-t0);
 
 	// Gather & write output
-	if(rank==ROOT){ free(all_elements); all_elements=(int*)malloc(sizeof(int)*n); }
-	gather_on_root(all_elements,my_elements,new_local_n);
-
-	if(rank==ROOT){
-		check_and_print(all_elements,n,output_file);
+/* ---------- gather the (already locally‑sorted) chunks on rank 0 ---------- */
+if (rank == ROOT) {
+    free(all_elements);
+    all_elements = static_cast<int*>(malloc(sizeof(int) * n));
+}
+gather_on_root(all_elements, my_elements, new_local_n);
+	if (rank == ROOT) {
+		check_and_print(all_elements, n, output_file);
 		free(all_elements);
 	}
-	free(my_elements);
-	MPI_Finalize();
-	return 0;
-}
+/* ---------- tidy up ------------------------------------------------------ */
+free(my_elements);
+MPI_Finalize();
+return 0;}
 
 // ============================================================================
 //                               Makefile
