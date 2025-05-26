@@ -34,9 +34,14 @@ int main(int argc, char *argv[])
 
     int runs{std::stoi(argv[2])}; // Convert second argument to int
 
+    std::random_device rd;     // Random number generator
+    //! remeber to change to random seed
+    std::mt19937_64 rand_seed(rd()); // Mersenne Twister engine for random number generation
+    //! this should be given to the function trough main
+
     for (int run = 0; run < runs; ++run)
     {
-        std::array<int, 7> result{malaria_simulation_sequential(T, x0)};
+        std::array<int, 7> result{malaria_simulation_sequential(T, x0, rand_seed)};
         for (int i = 0; i < 7; ++i) // Use 7 directly or define X_DIM as 7
         {
             output_file << result[i];

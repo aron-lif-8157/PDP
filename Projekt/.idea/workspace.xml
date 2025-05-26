@@ -7,10 +7,20 @@
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
     <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
   </component>
+  <component name="CMakePresetLoader">{
+  &quot;useNewFormat&quot;: true
+}</component>
   <component name="CMakeProjectFlavorService">
     <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated />
   </component>
   <component name="CMakeSettings">
     <configurations>
@@ -18,7 +28,20 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c9b92e67-5e6a-4d49-baaa-899278629324" name="Changes" comment="working on assignment" />
+    <list default="true" id="c9b92e67-5e6a-4d49-baaa-899278629324" name="Changes" comment="working on assignment">
+      <change afterPath="$PROJECT_DIR$/output/sanity checks/no_bleeding/sequentialruns_100_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/plotter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main" beforeDir="false" afterPath="$PROJECT_DIR$/build/main" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main.o" beforeDir="false" afterPath="$PROJECT_DIR$/build/main.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/prop.o" beforeDir="false" afterPath="$PROJECT_DIR$/build/prop.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/ssa.o" beforeDir="false" afterPath="$PROJECT_DIR$/build/ssa.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/stoichiometry.o" beforeDir="false" afterPath="$PROJECT_DIR$/build/stoichiometry.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/sequentialruns_100_1.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ssa.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ssa.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ssa.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ssa.hpp" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -26,6 +49,14 @@
   </component>
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -39,7 +70,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;git@github.com:aron-lif-8157/PDP.git&quot;,
-    &quot;accountId&quot;: &quot;090a09aa-5955-4b99-807f-409cd2f43b24&quot;
+    &quot;accountId&quot;: &quot;6689cce7-4b4a-4c7d-b308-d5bd7857966f&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -57,19 +88,34 @@
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "projekt",
-    "last_opened_file_path": "/home/aron/Documents/PDP/Projekt",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/aronl/Documents/Universitet/PDP/projekt",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\aronl\Documents\Universitet\PDP\projekt\output\sanity checks\unique numbers" />
+      <recent name="C:\Users\aronl\Documents\Universitet\PDP\projekt\output\sanity checks\no_bleeding" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -81,6 +127,10 @@
       <workItem from="1747915301900" duration="394000" />
       <workItem from="1747915888098" duration="1342000" />
       <workItem from="1748015494572" duration="2469000" />
+      <workItem from="1748271507308" duration="116000" />
+      <workItem from="1748271631733" duration="274000" />
+      <workItem from="1748271917058" duration="33000" />
+      <workItem from="1748271963775" duration="3829000" />
     </task>
     <task id="LOCAL-00001" summary="working on assignment">
       <option name="closed" value="true" />
@@ -95,6 +145,11 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VCPKGProject">
+    <isAutomaticCheckingOnLaunch value="false" />
+    <isAutomaticFoundErrors value="true" />
+    <isAutomaticReloadCMake value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="working on assignment" />

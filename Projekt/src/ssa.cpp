@@ -19,13 +19,8 @@ const double T{100};
 * @param x0 The initial state vector of the system, represented as an array of integers.
 * @return The final state vector after the simulation, represented as an array of integers.
 */
-std::array<int, 7> malaria_simulation_sequential(double T, std::array<int, 7> x0)
+std::array<int, 7> malaria_simulation_sequential(double T, std::array<int, 7> x0, std::mt19937_64 &ran_seed)
 {
-    std::random_device rd;     // Random number generator
-    //! remeber to change to random seed
-    std::mt19937_64 gen(42UL); // Mersenne Twister engine for random number generation
-
-    //! this should be given to the function trough main
 
     double t{0};                                          // Initial time
     std::uniform_real_distribution<double> dis(0.0, 1.0); // Uniform distribution for random numbers
@@ -53,8 +48,8 @@ std::array<int, 7> malaria_simulation_sequential(double T, std::array<int, 7> x0
         // can't divide by 0
 
         //! step 5
-        double u1{dis(gen)}; // Generate a random number between 0 and 1
-        double u2{dis(gen)}; // Generate another random number between 0 and 1
+        double u1{dis(ran_seed)}; // Generate a random number between 0 and 1
+        double u2{dis(ran_seed)}; // Generate another random number between 0 and 1
 
         //! step 6
         random_time_increment = -std::log(u1) / a0; // Calculate the random time increment
