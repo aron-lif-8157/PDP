@@ -1,0 +1,99 @@
+    
+        if (argc >= 3 && std::string(argv[2]) == "--time")
+    {
+        time_mode = true;
+    }
+    
+    //? Sequential timing run
+    double seq_time = 0.0;
+    if (time_mode && rank == 0)
+    {
+
+        std::cout << "time mode activated running speed test for " << TIME_RUNS << " simulations\n";
+        std::mt19937_64 seq_gen(42UL); // static seed since data isn't used
+
+        double seq_t0 = MPI_Wtime(); // Start the timer for sequential runs
+        {
+            std::vector<int> tmp(TIME_RUNS);
+            for (int i = 0; i < TIME_RUNS; ++i)
+            {
+                std::array<int, 7> tmp_result{malaria_simulation_sequential(T, x0, seq_gen)};
+                tmp[i] = tmp_result[0]; // Store the result in a temporary vector
+            }
+
+            /*Historgram for time measuring*/
+            int bins = 20;                                      // Number of bins for the histogram
+            int mn = *std::min_element(tmp.begin(), tmp.end()); // Minimum value in the results
+            int mx = *std::max_element(tmp.begin(), tmp.end()); // Maximum value in the results
+            double w = double(mx - mn) / bins;                  // Width of each bin
+            std::vector<int> counts(bins);
+
+            for (int v : tmp)
+            {
+                int b = std::min(bins - 1, int((v - mn) / w)); // Calculate the bin index
+                counts[b]++;
+            }
+        }
+        double seq_t1 = MPI_Wtime(); // End the timer for sequential runs
+        seq_time = seq_t1 - seq_t0;  // Calculate the elapsed time in seconds
+        std::cout << "[timing] sequential (" << TIME_RUNS << ") took " << seq_time << " s\n";
+    }
+
+    //? Parallel timing run
+    if (time_mode)
+    {
+        std::mt19937_64 rand_seed(42UL + rank); // Static seed since we aren't using the data
+
+        MPI_Barrier(MPI_COMM_WORLD);                 // Ensure all processes are synchronized before starting the timing run
+        double t0 = MPI_Wtime();                     // Start the timer
+        int local_runs_tmp = TIME_RUNS / world_size; // Calculate the number of runs for each process
+
+        std::vector<int> local_results_tmp(local_runs_tmp);
+        for (int i = 0; i < local_runs_tmp; ++i)
+        {
+            std::array<int, 7> tmp_result{malaria_simulation_sequential(T, x0, rand_seed)};
+            local_results_tmp[i] = tmp_result[0]; // Store the result in the local results array
+        }
+
+        /*gather the data on rank 0*/
+        std::vector<int> all_results_tmp;
+        if (rank == 0)
+        {
+            all_results_tmp.resize(TIME_RUNS); // Resize the vector to hold all results
+        }
+        MPI_Gather(
+            local_results_tmp.data(),                     /*sendbuf*/
+            local_runs_tmp,                               /*sendcount*/
+            MPI_INT,                                      /*sendtype*/
+            rank == 0 ? all_results_tmp.data() : nullptr, /*recvbuf*/
+            local_runs_tmp,                               /*recvcounts*/
+            MPI_INT,                                      /*recvtype*/
+            0,                                            /*root*/
+            MPI_COMM_WORLD                                /*comm*/
+        );
+
+        /*simulating the historgram work on root*/
+        if (rank == 0)
+        {
+            int bins = 20; // Number of bins for the histogram
+            int mn = *std::min_element(all_results_tmp.begin(), all_results_tmp.end());
+            int mx = *std::max_element(all_results_tmp.begin(), all_results_tmp.end());
+            double w = double(mx - mn) / bins;
+
+            std::vector<int> counts(bins, 0); // Initialize counts for each bin
+            for (int v : all_results_tmp)
+            {
+                int b = std::min(bins - 1, int((v - mn) / w));
+                counts[b]++;
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        double t1 = MPI_Wtime();
+
+        if (rank == 0)
+        {
+            double mpi_time = t1 - t0;
+            std::cout << "[timing] parallel (" << TIME_RUNS << ") took " << mpi_time << " s\n";
+            std::cout << "[timing] speedup: " << (seq_time / mpi_time) << "×\n\n";
+        }
+    }
